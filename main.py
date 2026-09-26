@@ -4,6 +4,9 @@ import msvcrt
 import os
 import math
 
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 widht = 200
 height = 40
 
@@ -153,7 +156,7 @@ def show_start_screen():
  Нажмите любую клавишу для начала игры..."""
     print(banner)
     msvcrt.getch()
-    os.system('cls')
+    clear_screen()
 
 
 def main():
@@ -245,7 +248,7 @@ def main():
                     while msvcrt.kbhit():
                         msvcrt.getch()
 
-                    os.system('cls')
+                    clear_screen()
                     banner= f"""\n=============================================
                     \n          НОВЫЙ УРОВЕНЬ {player.lvl}!               
                     \n=============================================
@@ -340,7 +343,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        os.system('cls')
+        clear_screen()
         if player.hp <= 0:
             print("\n=============================================")
             print("                  GAME OVER                  ")
@@ -351,4 +354,7 @@ def main():
 
 
 if __name__ == '__main__':
+    if os.name == 'nt':
+        os.system("")
+
     main()
