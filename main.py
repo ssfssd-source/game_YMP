@@ -30,6 +30,17 @@ class Player(Entity):
         self.lvl = 1
         self.xp_to_next_lvl = 2
 
+        #Посох
+        self.staff_lvl = 1
+        self.staff_dmg = 1
+        self.staff_cd = 30  #Раз в сколько кадров стреляет
+
+        #Чеснок
+        self.garlic_lvl = 0
+        self.garlic_dmg = 0
+        self.garlic_radius = 0
+        self.garlic_cd = 30  #Раз в сколько кадров наносит урон
+
     def move(self, key: str):
         if key == 'w' and self.y > 1:
             self.y -= 1
@@ -67,8 +78,9 @@ class Exp(Entity):
         super().__init__(x, y, symbol = '.')
 
 class Projectile(Entity):
-    def __init__(self, x: int, y: int, target_x: int, target_y: int):
+    def __init__(self, x: int, y: int, target_x: int, target_y: int, damage: int):
         super().__init__(x, y, symbol="*")
+        self.damage = damage
 
         # Дробные координаты для точного полета
         self.rx = float(x)
@@ -175,11 +187,21 @@ def main():
             if frames % 30 == 0:
                 enemies.append(spawn_enemy())
 
-            if frames % 15 == 0 and len(enemies) > 0:
+            if frames % player.staff_cd == 0 and len(enemies) > 0:
                 target = get_closest_enemy(player.x, player.y, enemies)
                 if target:
-                    projectile = Projectile(player.x, player.y, target.x, target.y)
+                    projectile = Projectile(player.x, player.y, target.x, target.y, player.staff_dmg)
                     bullets.append(projectile)
+
+                #Чеснок
+                if player.garlic_lvl > 0 and frames % player.garlic_cd == 0:
+                    for enemy in enemies.copy():
+                        dist = math.hypot(enemy.x - player.x, enemy.y - player.y)
+                        if dist <= player.garlic_radius:
+                            enemy.hp -= player.garlic_dmg
+                            if enemy.hp <= 0:
+                                exp_drops.append(Exp(enemy.x, enemy.y))
+                                enemies.remove(enemy)
 
             if msvcrt.kbhit():
                 key = msvcrt.getch().decode('ascii', errors='ignore').lower()
@@ -193,7 +215,7 @@ def main():
 
 
                 if enemy.x == player.x and enemy.y == player.y:
-                    player.hp -= 1
+                    player.hp -= bullet.damage
                     enemies.remove(enemy)
 
             for bullet in bullets.copy():
@@ -226,16 +248,28 @@ def main():
                     player.lvl += 1
                     player.xp = 0
                     player.xp_to_next_lvl += 35
-                    os.system('cls')
-                    banner =f"""
-                        =============================================
-                                       УРОВЕНЬ {player.lvl}!               
-                        =============================================
-                        Выберите улучшение:"
-                        [1] Восстановить HP и +1 к Макс HP
-                        [2] Заглушка (здесь будет Чеснок)
-                        [3] Заглушка (здесь будет Святая Вода)"""
-                    print(banner)
+
+                    is_maxed = (player.staff_lvl == 5 and player.garlic_lvl == 5 and player.max_hp == 10)
+
+                    if is_maxed:
+                        player.hp = player.max_hp
+                    else:
+                        os.system('cls')
+                        banner =f"""
+                            =============================================
+                                           УРОВЕНЬ {player.lvl}!               
+                            =============================================
+                            Выберите улучшение:"""
+                        if player.max_hp<10: print("[1] Восстановить HP и +1 к Макс HP")
+                        else: print("[1] Полное исцеление(ХП на максимуме)")
+
+                        if player.staff_lvl < 7: print(f" [2] Посох ур.{player.staff_lvl + 1}")
+                        else: print(" [2] Посох (МАКСИМУМ)")
+
+                        if player.garlic_lvl == 0: print(" [3] Взять Чеснок (Аура урона)")
+                        elif player.garlic_lvl < 7: print(f" [3] Чеснок ур.{player.garlic_lvl + 1}")
+                        else: print(" [3] Чеснок (МАКСИМУМ)")
+                        print("=============================================\n",banner)
                     while True:
                         if msvcrt.kbhit():
                             choice = msvcrt.getch().decode('ascii', errors='ignore')
@@ -243,9 +277,41 @@ def main():
                                 player.max_hp += 1
                                 player.hp = player.max_hp
                                 break
-                            elif choice == '2':
+
+                            elif choice == '2' and player.staff_lvl < 5:
+                                player.staff_lvl += 1
+                            if player.staff_lvl == 2:
+                                player.staff_cd = 10
+                            elif player.staff_lvl == 3:
+                                player.staff_dmg = 2
+                            elif player.staff_lvl == 4:
+                                player.staff_cd = 5
+                            elif player.staff_lvl == 5:
+                                player.staff_dmg = 3
                                 break
-                            elif choice == '3':
+
+
+
+                            elif choice == '3' and player.garlic_lvl < 7:
+
+                                player.garlic_lvl += 1
+
+                                if player.garlic_lvl == 1:
+
+                                    player.garlic_radius = 2
+
+                                    player.garlic_dmg = 1
+
+                                    player.garlic_cd = 15  # Тикает раз в полсекунды
+
+                                elif player.garlic_lvl == 2:
+                                    player.garlic_radius = 3
+                                elif player.garlic_lvl == 3:
+                                    player.garlic_cd = 10
+                                elif player.garlic_lvl == 4:
+                                    player.garlic_cd = 2  # Тикает быстрее
+                                elif player.garlic_lvl == 5:
+                                    player.garlic_radius = 4
                                 break
 
             if player.hp <= 0:
