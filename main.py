@@ -3,6 +3,7 @@ import random
 import time
 import msvcrt
 import os
+from cmath import inf
 
 #создание поля игры
 widht = 200
@@ -56,6 +57,15 @@ class Enemy(Entity):
             self.y -= 1
 
 
+class Projectile(Entity):
+    def __init__(self, x: int, y: int, dx: int, dy: int):
+        super().__init__(x, y, symbol="*")
+        self.dx = dx
+        self.dy = dy
+    def update(self):
+        self.x += self.dx
+        self.y += self.dy
+
 def spawn_enemy() -> Enemy:
     side = random.choice(['top', 'bottom', 'left', 'right'])
     if side == 'top':
@@ -66,6 +76,20 @@ def spawn_enemy() -> Enemy:
         return Enemy(x=1, y = random.randint(1,height-2))
     else:
         return Enemy(x = widht-2, y = random.randint(1, height - 2))
+
+def get_closest_enemy(player_x, player_y, enemies):
+    if not enemies:
+        return None
+    closest = None
+    min_dist = float('inf')
+
+    for enemy in enemies:
+        dist = (enemy.x - player_x)**2 + (enemy.y - player_y)**2
+        if dist < min_dist:
+            min_dist = dist
+            closest = enemy
+    return closest
+
 
 
 def get_empty_matrix():
@@ -113,6 +137,7 @@ def main():
     player = Player(x=widht // 2, y=height // 2)
 
     enemies = []
+    bullets = []
     frames = 0
 
     try:
@@ -120,6 +145,20 @@ def main():
             frames += 1
             if frames % 30 == 0:
                 enemies.append(spawn_enemy())
+
+            if frames % 15 == 0 and len(enemies) > 0:
+                target = get_closest_enemy(player.x, player.y, enemies)
+                if target:
+                    dx = 0
+                    dy = 0
+                    if target.x > player.x: dx = 1
+                    elif target.x < player.x: dx = -1
+
+                    if target.y > player.y: dy = 1
+                    elif target.y < player.y: dy = -1
+
+                    projectile = Projectile(player.x, player.y, dx, dy)
+                    bullets.append(projectile)
 
             if msvcrt.kbhit():
                 key = msvcrt.getch().decode('ascii', errors='ignore').lower()
@@ -136,6 +175,23 @@ def main():
                     player.hp -= 1
                     enemies.remove(enemy)
 
+            for bullet in bullets.copy():
+                bullet.update()
+
+                if bullet.x <= 0 or bullet.x >= widht-1 or bullet.y <=0 or bullet.y >= height-1:
+                    bullets.remove(bullet)
+                    continue
+                hit = False
+                for enemy in enemies.copy():
+                    if bullet.x == enemy.x and bullet.y == enemy.y:
+                        enemy.hp -= 1
+                        hit = True
+                        if enemy.hp <= 0:
+                            enemies.remove(enemy)
+                        break
+
+                if hit:
+                    bullets.remove(bullet)
 
             if player.hp <= 0:
                 break
@@ -147,6 +203,9 @@ def main():
 
             for enemy in enemies:
                 enemy.draw(matrix)
+
+            for bullet in bullets:
+                bullet.draw(matrix)
 
             draw(matrix)
 
