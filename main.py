@@ -4,6 +4,7 @@ import time
 import msvcrt
 import os
 from cmath import inf
+import math
 
 #создание поля игры
 widht = 200
@@ -58,13 +59,32 @@ class Enemy(Entity):
 
 
 class Projectile(Entity):
-    def __init__(self, x: int, y: int, dx: int, dy: int):
+    def __init__(self, x: int, y: int, target_x: int, target_y: int):
         super().__init__(x, y, symbol="*")
-        self.dx = dx
-        self.dy = dy
+
+        # Дробные координаты для точного полета
+        self.rx = float(x)
+        self.ry = float(y)
+
+        dx = target_x - x
+        dy = target_y - y
+
+        dist = math.hypot(dx, dy)
+
+        if dist != 0:
+            # Теперь пуля за 1 кадр проходит ровно 1 клетку в ЛЮБОМ направлении.
+            self.dx = dx / dist
+            self.dy = dy / dist
+        else:
+            self.dx = 0
+            self.dy = 0
+
     def update(self):
-        self.x += self.dx
-        self.y += self.dy
+        self.rx += self.dx
+        self.ry += self.dy
+
+        self.x = int(round(self.rx))
+        self.y = int(round(self.ry))
 
 def spawn_enemy() -> Enemy:
     side = random.choice(['top', 'bottom', 'left', 'right'])
@@ -149,15 +169,7 @@ def main():
             if frames % 15 == 0 and len(enemies) > 0:
                 target = get_closest_enemy(player.x, player.y, enemies)
                 if target:
-                    dx = 0
-                    dy = 0
-                    if target.x > player.x: dx = 1
-                    elif target.x < player.x: dx = -1
-
-                    if target.y > player.y: dy = 1
-                    elif target.y < player.y: dy = -1
-
-                    projectile = Projectile(player.x, player.y, dx, dy)
+                    projectile = Projectile(player.x, player.y, target.x, target.y)
                     bullets.append(projectile)
 
             if msvcrt.kbhit():
@@ -183,7 +195,7 @@ def main():
                     continue
                 hit = False
                 for enemy in enemies.copy():
-                    if bullet.x == enemy.x and bullet.y == enemy.y:
+                    if abs(bullet.x - enemy.x) <= 1 and abs(bullet.y - enemy.y) <= 1:
                         enemy.hp -= 1
                         hit = True
                         if enemy.hp <= 0:
