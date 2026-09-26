@@ -25,6 +25,11 @@ class Player(Entity):
     def __init__(self, x: int, y: int, hp: int = 5):
         super().__init__(x, y, symbol = "@")
         self.hp = hp
+        self.max_hp = hp
+        self.xp = 0
+        self.lvl = 1
+        self.xp_to_next_lvl = 2
+
     def move(self, key: str):
         if key == 'w' and self.y > 1:
             self.y -= 1
@@ -57,6 +62,9 @@ class Enemy(Entity):
         elif self.y > target_y:
             self.y -= 1
 
+class Exp(Entity):
+    def __init__(self, x: int, y: int):
+        super().__init__(x, y, symbol = '.')
 
 class Projectile(Entity):
     def __init__(self, x: int, y: int, target_x: int, target_y: int):
@@ -158,6 +166,7 @@ def main():
 
     enemies = []
     bullets = []
+    exp_drops = []
     frames = 0
 
     try:
@@ -199,29 +208,68 @@ def main():
                         enemy.hp -= 1
                         hit = True
                         if enemy.hp <= 0:
+                            exp_drops.append(Exp(enemy.x, enemy.y))
                             enemies.remove(enemy)
                         break
 
                 if hit:
                     bullets.remove(bullet)
 
+                    # СБОР ОПЫТА
+                for xp in exp_drops.copy():
+                    if xp.x == player.x and xp.y == player.y:
+                        player.xp += 1
+                        exp_drops.remove(xp)
+
+                # ПРОВЕРКА ЛЕВЕЛ-АПА И ПАУЗА
+                if player.xp >= player.xp_to_next_lvl:
+                    player.lvl += 1
+                    player.xp = 0
+                    player.xp_to_next_lvl += 35
+                    os.system('cls')
+                    banner =f"""
+                        =============================================
+                                       УРОВЕНЬ {player.lvl}!               
+                        =============================================
+                        Выберите улучшение:"
+                        [1] Восстановить HP и +1 к Макс HP
+                        [2] Заглушка (здесь будет Чеснок)
+                        [3] Заглушка (здесь будет Святая Вода)"""
+                    print(banner)
+                    while True:
+                        if msvcrt.kbhit():
+                            choice = msvcrt.getch().decode('ascii', errors='ignore')
+                            if choice == '1':
+                                player.max_hp += 1
+                                player.hp = player.max_hp
+                                break
+                            elif choice == '2':
+                                break
+                            elif choice == '3':
+                                break
+
             if player.hp <= 0:
                 break
 
 
             matrix = get_empty_matrix()
-            player.draw(matrix)
-
-
+            for xp in exp_drops:
+                xp.draw(matrix)
             for enemy in enemies:
                 enemy.draw(matrix)
-
             for bullet in bullets:
                 bullet.draw(matrix)
+            player.draw(matrix)
 
             draw(matrix)
 
-            print(f"\n HP: {player.hp}/5 | Врагов на поле: {len(enemies)} | Время: {frames // 30} сек   ")
+
+            bar_len = 10
+            filled = int((player.xp / player.xp_to_next_lvl) * bar_len)
+            xp_bar = '█' * filled + '░' * (bar_len - filled)
+
+            print(
+                f"\n HP: {player.hp}/{player.max_hp} | LVL {player.lvl} [{xp_bar}] | Врагов: {len(enemies)} | {frames // 30} сек   ")
 
             time.sleep(0.03)
 
